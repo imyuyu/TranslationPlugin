@@ -3,7 +3,7 @@ package cn.yiiguxing.plugin.translate.action
 import cn.yiiguxing.plugin.translate.ui.BalloonPositionTracker
 import cn.yiiguxing.plugin.translate.util.SelectionMode
 import cn.yiiguxing.plugin.translate.util.TranslationUIManager
-import cn.yiiguxing.plugin.translate.util.splitWords
+import cn.yiiguxing.plugin.translate.util.processBeforeTranslate
 import com.intellij.codeInsight.highlighting.HighlightManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -18,39 +18,35 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.ui.JBColor
 import java.awt.Color
 import java.util.*
+import javax.swing.Icon
 
 /**
  * 翻译动作
  *
  * @param checkSelection 指定是否检查手动选择的文本。`true` - 如果有手动选择文本, 则忽略`autoSelectionMode`, `false` - 将忽略手动选择的文本。
  */
-open class TranslateAction(checkSelection: Boolean = false) : AutoSelectAction(checkSelection), DumbAware {
+open class TranslateAction(checkSelection: Boolean = false, icon: Icon? = null) :
+        AutoSelectAction(checkSelection, icon = icon), DumbAware {
 
     override val selectionMode
         get() = SelectionMode.INCLUSIVE
 
-    override fun onUpdate(e: AnActionEvent, active: Boolean) {
-        e.presentation.isEnabledAndVisible = active
-    }
-
-    override fun onActionPerformed(e: AnActionEvent, editor: Editor, selectionRange: TextRange) {
-        editor.isColumnMode
-        editor.document.getText(selectionRange).splitWords()?.let { text ->
-            val highlighters = editor.project?.let { project ->
-                ArrayList<RangeHighlighter>().also {
-                    HighlightManager.getInstance(project).addRangeHighlight(editor, selectionRange.startOffset,
-                            selectionRange.endOffset, HIGHLIGHT_ATTRIBUTES, true, it)
-                }
-            }
+    override fun onActionPerformed(event: AnActionEvent, editor: Editor, selectionRange: TextRange) {
+        val project = editor.project ?: return
+        editor.document.getText(selectionRange).processBeforeTranslate()?.let { text ->
+            val highlightManager = HighlightManager.getInstance(project)
+            val highlighters = ArrayList<RangeHighlighter>()
+            HighlightManager.getInstance(project).addRangeHighlight(editor, selectionRange.startOffset,
+                    selectionRange.endOffset, HIGHLIGHT_ATTRIBUTES, true, highlighters)
 
             val caretRangeMarker = editor.createCaretRangeMarker(selectionRange)
             val tracker = BalloonPositionTracker(editor, caretRangeMarker)
             val balloon = TranslationUIManager.showBalloon(editor, text, tracker, Balloon.Position.below)
 
-            highlighters?.takeIf { it.isNotEmpty() }?.let {
+            highlighters.takeIf { it.isNotEmpty() }?.let {
                 Disposer.register(balloon, Disposable {
                     for (highlighter in it) {
-                        highlighter.dispose()
+                        highlightManager.removeSegmentHighlighter(editor, highlighter)
                     }
                 })
             }

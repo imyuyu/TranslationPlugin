@@ -2,6 +2,7 @@ package cn.yiiguxing.plugin.translate.tts
 
 import cn.yiiguxing.plugin.translate.DEFAULT_USER_AGENT
 import cn.yiiguxing.plugin.translate.GOOGLE_TTS
+import cn.yiiguxing.plugin.translate.GOOGLE_TTS_CN
 import cn.yiiguxing.plugin.translate.message
 import cn.yiiguxing.plugin.translate.trans.Lang
 import cn.yiiguxing.plugin.translate.trans.tk
@@ -56,10 +57,23 @@ class GoogleTTSPlayer(
     private var duration = 0
 
     private val playlist: List<String> by lazy {
-        with(text.splitSentence(MAX_TEXT_LENGTH)) {
-            mapIndexed { index, sentence ->
-                "$GOOGLE_TTS?client=gtx&ie=UTF-8&tl=${lang.code}&total=$size&idx=$index&textlen=${sentence.length}" +
-                        "&tk=${sentence.tk()}&q=${sentence.urlEncode()}"
+        val baseUrl = if (Settings.googleTranslateSettings.useTranslateGoogleCom) {
+            GOOGLE_TTS
+        } else {
+            GOOGLE_TTS_CN
+        }
+        text.splitSentence(MAX_TEXT_LENGTH).let {
+            it.mapIndexed { index, sentence ->
+                UrlBuilder(baseUrl)
+                        .addQueryParameter("client", "gtx")
+                        .addQueryParameter("ie", "UTF-8")
+                        .addQueryParameter("tl", lang.code)
+                        .addQueryParameter("total", it.size.toString())
+                        .addQueryParameter("idx", index.toString())
+                        .addQueryParameter("textlen", sentence.length.toString())
+                        .addQueryParameter("tk", sentence.tk())
+                        .addQueryParameter("q", sentence)
+                        .build()
             }
         }
     }
@@ -117,10 +131,10 @@ class GoogleTTSPlayer(
             text = "tts: downloading..."
         }
         playlist
-                .map {
+                .map { url ->
                     indicator.checkCanceled()
-                    LOGGER.i("TTS>>> $it")
-                    HttpRequests.request(it)
+                    LOGGER.i("TTS>>> $url")
+                    HttpRequests.request(url)
                             .userAgent(DEFAULT_USER_AGENT)
                             .readBytes(indicator)
                             .let {
@@ -129,9 +143,9 @@ class GoogleTTSPlayer(
                 }
                 .enumeration()
                 .let {
-                    SequenceInputStream(it).use {
+                    SequenceInputStream(it).use { sis ->
                         indicator.checkCanceled()
-                        it.asAudioInputStream().rawPlay(indicator)
+                        sis.asAudioInputStream().rawPlay(indicator)
                     }
                 }
     }
@@ -188,7 +202,7 @@ class GoogleTTSPlayer(
 
         private const val MAX_TEXT_LENGTH = 200
 
-        private const val NOTIFICATION_ID = "TTS_NOTIFICATION"
+        private const val NOTIFICATION_ID = "TTS Error"
 
         val SUPPORTED_LANGUAGES: List<Lang> = listOf(
                 Lang.CHINESE, Lang.ENGLISH, Lang.CHINESE_TRADITIONAL, Lang.ALBANIAN, Lang.ARABIC, Lang.ESTONIAN,

@@ -19,9 +19,11 @@ class StringsTest {
         Assert.assertEquals("SPLIT WORD", "SPLIT_WORD".splitWords())
         Assert.assertEquals("split WORD", "splitWORD".splitWords())
         Assert.assertEquals("SPLIT Word", "SPLITWord".splitWords())
-        Assert.assertEquals("split Word SplitWord", "split  Word  SplitWord ".splitWords())
-        Assert.assertEquals("word 0", "word0".splitWords())
-        Assert.assertEquals("word 字", "word字".splitWords())
+        Assert.assertEquals(" split  Word  Split Word;", " split  Word  SplitWord;".splitWords())
+        Assert.assertEquals("0 word 1", "0word1".splitWords())
+        Assert.assertEquals("word字", "word字".splitWords())
+        Assert.assertEquals("0 split Word Split Word Split WORD SPLIT Word字",
+                "0splitWordSplitWordSplitWORD_SPLITWord字".splitWords())
     }
 
     @Test

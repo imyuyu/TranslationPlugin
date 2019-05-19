@@ -4,7 +4,6 @@ import cn.yiiguxing.plugin.translate.Settings
 import cn.yiiguxing.plugin.translate.trans.Lang
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
-import com.intellij.ui.CollectionComboBoxModel
 import com.intellij.util.ui.JBDimension
 import java.awt.event.ItemEvent
 import javax.swing.JComponent
@@ -19,6 +18,11 @@ class BalloonTranslationPanel(project: Project?, settings: Settings)
 
     private var ignoreEvent = false
     private var onLanguageChangedHandler: ((Lang, Lang) -> Unit)? = null
+
+    override val originalFoldingLength: Int = 100
+
+    val sourceLanguage: Lang? get() = sourceLangComponent.selected
+    val targetLanguage: Lang? get() = targetLangComponent.selected
 
     init {
         onFixLanguage { sourceLangComponent.selected = it }
@@ -87,7 +91,7 @@ class BalloonTranslationPanel(project: Project?, settings: Settings)
         const val MAX_VIEWER_HEIGHT = 250
 
         private fun ComboBox<Lang>.setLanguages(languages: List<Lang>) {
-            model = CollectionComboBoxModel<Lang>(languages, selected)
+            model = LanguageListModel(languages, selected)
         }
     }
 

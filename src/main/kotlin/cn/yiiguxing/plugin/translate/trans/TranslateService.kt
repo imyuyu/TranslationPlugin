@@ -24,21 +24,29 @@ class TranslateService private constructor() {
 
     private var messageBus: MessageBusConnection? = null
 
+    private val listeners = mutableMapOf<ListenerKey, MutableSet<TranslateListener>>()
+
     fun setTranslator(translatorId: String) {
         checkThread()
         if (translatorId != translator.id) {
             translator = when (translatorId) {
                 YoudaoTranslator.TRANSLATOR_ID -> YoudaoTranslator
+                BaiduTranslator.TRANSLATOR_ID -> BaiduTranslator
                 else -> DEFAULT_TRANSLATOR
             }
         }
     }
 
-    fun getTranslators(): List<Translator> = listOf(GoogleTranslator, YoudaoTranslator)
+    fun getTranslators(): List<Translator> = listOf(GoogleTranslator, YoudaoTranslator, BaiduTranslator)
 
     fun getCache(text: String, srcLang: Lang, targetLang: Lang): Translation? {
         checkThread()
         return cache[CacheKey(text, srcLang, targetLang, translator.id)]
+    }
+
+    fun clearCaches() {
+        checkThread()
+        cache.evictAll()
     }
 
     fun translate(text: String, srcLang: Lang, targetLang: Lang, listener: TranslateListener) {
@@ -48,19 +56,35 @@ class TranslateService private constructor() {
             return
         }
 
+        val key = ListenerKey(text, srcLang, targetLang)
+        listeners[key]?.let {
+            it += listener
+            return
+        }
+        listeners[key] = mutableSetOf(listener)
+
         executeOnPooledThread {
             try {
                 with(translator) {
-                    translate(text, srcLang, targetLang).let {
-                        it.cache(text, srcLang, targetLang, id)
-                        invokeLater(ModalityState.any()) { listener.onSuccess(it) }
+                    translate(text, srcLang, targetLang).let { translation ->
+                        translation.cache(text, srcLang, targetLang, id)
+                        invokeLater(ModalityState.any()) {
+                            listeners.run(key) { onSuccess(translation) }
+                        }
                     }
                 }
             } catch (e: TranslateException) {
                 LOGGER.w("translate", e)
-                invokeLater(ModalityState.any()) { listener.onError(e.message, e) }
+                invokeLater(ModalityState.any()) {
+                    listeners.run(key) { onError(e.message, e) }
+                }
             }
         }
+    }
+
+    private inline fun MutableMap<ListenerKey, MutableSet<TranslateListener>>.run(
+            key: ListenerKey, action: TranslateListener.() -> Unit) {
+        remove(key)?.forEach { it.action() }
     }
 
     private fun Translation.cache(text: String, srcLang: Lang, targetLang: Lang, translatorId: String) {
@@ -102,6 +126,8 @@ class TranslateService private constructor() {
         messageBus?.disconnect()
         messageBus = null
     }
+
+    private data class ListenerKey(val text: String, val srcLang: Lang, val targetLang: Lang)
 
     companion object {
         val DEFAULT_TRANSLATOR: Translator = GoogleTranslator

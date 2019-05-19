@@ -7,6 +7,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.util.TextRange
+import javax.swing.Icon
 
 /**
  * AutoSelectAction
@@ -15,36 +16,39 @@ import com.intellij.openapi.util.TextRange
  */
 abstract class AutoSelectAction(
         private val checkSelection: Boolean,
-        private val wordPartCondition: CharCondition = DEFAULT_CONDITION
-) : AnAction() {
+        private val wordPartCondition: CharCondition = DEFAULT_CONDITION,
+        icon: Icon? = null
+) : AnAction(icon) {
 
     protected abstract val selectionMode: SelectionMode
 
     /**
      * 更新Action
      *
-     * @param e      事件
-     * @param active 是否活动的，表示是否可以取到词
+     * @param e 事件
      */
-    protected open fun onUpdate(e: AnActionEvent, active: Boolean) {}
+    protected open fun onUpdate(e: AnActionEvent): Boolean = true
 
     /**
      * 执行操作
      *
-     * @param e              事件
+     * @param event          事件
      * @param editor         编辑器
      * @param selectionRange 取词的范围
      */
-    protected open fun onActionPerformed(e: AnActionEvent, editor: Editor, selectionRange: TextRange) {}
+    protected open fun onActionPerformed(event: AnActionEvent, editor: Editor, selectionRange: TextRange) {}
 
     protected open val AnActionEvent.editor: Editor? get() = CommonDataKeys.EDITOR.getData(dataContext)
 
     override fun update(e: AnActionEvent) {
-        val active = e.editor?.let { editor ->
-            checkSelection && editor.selectionModel.hasSelection() || editor.canSelect()
+        val active = e.editor?.run {
+            if (checkSelection && selectionModel.hasSelection()) {
+                hasValidSelection()
+            } else {
+                canSelect()
+            }
         } ?: false
-
-        onUpdate(e, active)
+        e.presentation.isEnabledAndVisible = active && onUpdate(e)
     }
 
     override fun actionPerformed(e: AnActionEvent) {
@@ -56,6 +60,10 @@ abstract class AutoSelectAction(
         e.getSelectionRange()?.takeUnless { it.isEmpty }?.let { onActionPerformed(e, editor, it) }
     }
 
+    private fun Editor.hasValidSelection(): Boolean {
+        return selectionModel.selectedText?.filterIgnore()?.any(wordPartCondition) ?: false
+    }
+
     private fun Editor.canSelect(): Boolean {
         val offset = caretModel.offset
         val textLength = document.textLength
@@ -65,7 +73,8 @@ abstract class AutoSelectAction(
 
         return TextRange(maxOf(0, offset - 1), minOf(textLength, offset + 1))
                 .let { document.getText(it) }
-                .find(wordPartCondition) != null
+                .filterIgnore()
+                .any(wordPartCondition)
     }
 
     private fun AnActionEvent.getSelectionRange() = editor?.run {

@@ -13,25 +13,43 @@ import java.security.MessageDigest
 fun String?.isNullOrBlank() = (this as CharSequence?).isNullOrBlank()
 
 
+private val REGEX_UNDERLINE = "([A-Za-z])_+([A-Za-z])".toRegex()
+private val REGEX_NUM_WORD = "([0-9])([A-Za-z])".toRegex()
+private val REGEX_WORD_NUM = "([A-Za-z])([0-9])".toRegex()
+private val REGEX_LOWER_UPPER = "([a-z])([A-Z])".toRegex()
+private val REGEX_UPPER_WORD = "([A-Z])([A-Z][a-z])".toRegex()
+private val REGEX_WHITESPACE_CHARACTER = "\\s".toRegex()
+private val REGEX_WHITESPACE_CHARACTERS = "\\s{2,}".toRegex()
+private const val REPLACEMENT_SPLIT_GROUP = "$1 $2"
+
 /**
  * 单词拆分
  */
-fun String.splitWords(): String? {
-    if (isBlank()) {
-        return null
-    }
+fun String.splitWords(): String {
+    return replace(REGEX_UNDERLINE, REPLACEMENT_SPLIT_GROUP)
+            .replace(REGEX_NUM_WORD, REPLACEMENT_SPLIT_GROUP)
+            .replace(REGEX_WORD_NUM, REPLACEMENT_SPLIT_GROUP)
+            .replace(REGEX_LOWER_UPPER, REPLACEMENT_SPLIT_GROUP)
+            .replace(REGEX_UPPER_WORD, REPLACEMENT_SPLIT_GROUP)
+}
 
-    return trim().let {
-        if (it.contains("\\s+".toRegex())) {
-            it.replace("\\s+".toRegex(), " ")
-        } else {
-            it.replace("[_\\s]+".toRegex(), " ")
-                    .replace("([A-Z][a-z]+)|([0-9\\W]+)".toRegex(), " $0 ")
-                    .replace("[A-Z]{2,}".toRegex(), " $0")
-                    .replace("\\s{2,}".toRegex(), " ")
-                    .trim()
-        }
+fun String.filterIgnore(): String {
+    return try {
+        Settings.ignoreRegExp?.takeIf { it.isNotEmpty() }?.toRegex()?.let { replace(it, " ") } ?: this
+    } catch (e: Exception) {
+        this
     }
+}
+
+fun String.processBeforeTranslate(): String? {
+    val filteredIgnore = filterIgnore()
+    val formatted = if (!Settings.keepFormat) {
+        filteredIgnore.replace(REGEX_WHITESPACE_CHARACTERS, " ")
+    } else filteredIgnore
+
+    return formatted.trim()
+            .takeIf { it.isNotBlank() }
+            ?.let { if (!it.contains(REGEX_WHITESPACE_CHARACTER)) splitWords() else it }
 }
 
 /**
@@ -72,9 +90,9 @@ fun <C : MutableCollection<String>> String.splitSentenceTo(destination: C, maxSe
         return destination
     }
 
-    return optimized.splitSentenceTo(destination, maxSentenceLength, String::splitByPunctuation) {
-        splitSentenceTo(it, maxSentenceLength, String::splitBySpace) {
-            splitByLengthTo(it, maxSentenceLength)
+    return optimized.splitSentenceTo(destination, maxSentenceLength, String::splitByPunctuation) { _ ->
+        splitSentenceTo(destination, maxSentenceLength, String::splitBySpace) { _ ->
+            splitByLengthTo(destination, maxSentenceLength)
         }
     }
 }

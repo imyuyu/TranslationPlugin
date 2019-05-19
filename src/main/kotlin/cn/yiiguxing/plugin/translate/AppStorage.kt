@@ -1,6 +1,7 @@
 package cn.yiiguxing.plugin.translate
 
 import cn.yiiguxing.plugin.translate.trans.Lang
+import cn.yiiguxing.plugin.translate.trans.LanguagePair
 import cn.yiiguxing.plugin.translate.util.trimToSize
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.PersistentStateComponent
@@ -10,8 +11,10 @@ import com.intellij.openapi.components.Storage
 import com.intellij.util.messages.Topic
 import com.intellij.util.xmlb.XmlSerializerUtil
 import com.intellij.util.xmlb.annotations.CollectionBean
+import com.intellij.util.xmlb.annotations.MapAnnotation
 import com.intellij.util.xmlb.annotations.Transient
 import java.util.*
+import kotlin.collections.HashMap
 import kotlin.properties.Delegates
 
 /**
@@ -22,6 +25,15 @@ class AppStorage : PersistentStateComponent<AppStorage> {
 
     @CollectionBean
     private val histories: MutableList<String> = ArrayList(DEFAULT_HISTORY_SIZE)
+
+    @MapAnnotation
+    private val languageScores: MutableMap<Lang, Int> = HashMap()
+
+    val lastLanguages: LanguagePair = LanguagePair()
+
+    val lastInstantLanguages: LanguagePair = LanguagePair()
+
+    var lastReplacementTargetLanguage: Lang? = null
 
     /**
      * 最大历史记录长度
@@ -35,23 +47,35 @@ class AppStorage : PersistentStateComponent<AppStorage> {
         true
     }
 
-    /**
-     * 记录最后一次的源语言
-     */
-    var lastSourceLanguage: Lang? = null
-    /**
-     * 记录最后一次的目标语言
-     */
-    var lastTargetLanguage: Lang? = null
-
     @Transient
     private val dataChangePublisher: HistoriesChangedListener =
-            ApplicationManager.getApplication().messageBus.syncPublisher(HistoriesChangedListener.TOPIC)
+        ApplicationManager.getApplication().messageBus.syncPublisher(HistoriesChangedListener.TOPIC)
 
     override fun getState(): AppStorage = this
 
     override fun loadState(state: AppStorage) {
         XmlSerializerUtil.copyBean(state, this)
+    }
+
+    /**
+     * @return 语言常用评分
+     */
+    fun getLanguageScore(lang: Lang): Int = languageScores[lang] ?: 0
+
+    /**
+     * 设置语言常用评分
+     */
+    fun setLanguageScore(lang: Lang, score: Int) {
+        languageScores[lang] = score
+    }
+
+    /**
+     * 增加语言常用评分
+     */
+    fun accumulateLanguageScore(lang: Lang) {
+        if (lang != Lang.AUTO) {
+            languageScores[lang] = languageScores.getOrDefault(lang, 0) + 1
+        }
     }
 
     private fun trimHistoriesSize(maxSize: Int) {
@@ -123,9 +147,7 @@ interface HistoriesChangedListener {
     fun onHistoryItemChanged(newHistory: String)
 
     companion object {
-        val TOPIC: Topic<HistoriesChangedListener> = Topic.create(
-                "TranslateHistoriesChanged",
-                HistoriesChangedListener::class.java
-        )
+        val TOPIC: Topic<HistoriesChangedListener> =
+            Topic.create("TranslateHistoriesChanged", HistoriesChangedListener::class.java)
     }
 }

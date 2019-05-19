@@ -1,11 +1,13 @@
 
-TranslationPlugin [![Jetbrains Plugins][plugin-img]][plugin] [![Build Status][build-img-master]][travis-ci] [![GitHub release][release-img]][latest-release]
+TranslationPlugin
 =================
 
-[![Version](https://img.shields.io/jetbrains/plugin/v/8579.svg)][plugin]
-[![Downloads](https://img.shields.io/jetbrains/plugin/d/8579.svg)][plugin]
-[![Downloads](http://phpstorm.espend.de/badge/8579/downloads)][plugin]
-[![Downloads last month](http://phpstorm.espend.de/badge/8579/last-month)][plugin]
+[![Jetbrains Plugins][plugin-img]][plugin]
+[![License][license-img]][license]
+[![Build Status][build-img-master]][travis-ci]
+[![GitHub release][release-img]][latest-release]
+[![Version][version-img]][plugin]
+[![Downloads][downloads-img]][plugin]
 
 ### JetBrains IDE/Android Studio 翻译插件
 
@@ -16,6 +18,7 @@ TranslationPlugin [![Jetbrains Plugins][plugin-img]][plugin] [![Build Status][bu
 - 多翻译引擎
   - Google翻译
   - 有道翻译
+  - 百度翻译
 - 多语言互译
 - 语音朗读
 - 自动选词
@@ -49,22 +52,33 @@ TranslationPlugin [![Jetbrains Plugins][plugin-img]][plugin] [![Build Status][bu
 使用
 ----
 1. **申请有道智云翻译服务（可选）:**
-   - 注册[有道智云](http://ai.youdao.com)帐号并登录到控制台页面
-   - 创建一个翻译实例：<kbd>控制台</kbd> > <kbd>自然语言翻译</kbd> > <kbd>翻译实例</kbd> > <kbd>创建翻译实例</kbd>
-   - 创建一个应用并绑定翻译服务：<kbd>控制台</kbd> > <kbd>应用管理</kbd> > <kbd>我的应用</kbd> > <kbd>创建应用</kbd> > <kbd>绑定服务</kbd>
-   - 在插件中绑定应用——将上步骤的**应用ID**和**应用密钥**填写到插件设置页中相应的位置：<kbd>Preferences(Settings)</kbd> > <kbd>\[Other Settings]</kbd> > <kbd>Translation</kbd> > <kbd>有道翻译</kbd>
+   - 注册[有道智云](http://ai.youdao.com)帐号并获取其**应用ID**和**应用密钥**
+   - 绑定**应用ID**和**应用密钥**：<kbd>Preferences(Settings)</kbd> > <kbd>\[Other Settings]</kbd> > <kbd>Translation</kbd> > <kbd>有道翻译</kbd>
 
    注：请注意保管好你的**应用密钥**，防止其泄漏。如帐号欠费，将无法使用。
 
-2. **开始翻译:**
+2. **申请百度翻译服务（可选）:**
+   - 注册[百度翻译开放平台](http://api.fanyi.baidu.com/api/trans/product/desktop?req=developer)帐号并获取其**应用ID**和**应用密钥**
+   - 绑定**应用ID**和**应用密钥**：<kbd>Preferences(Settings)</kbd> > <kbd>\[Other Settings]</kbd> > <kbd>Translation</kbd> > <kbd>百度翻译</kbd>
+
+   注：请注意保管好你的**应用密钥**，防止其泄漏。如帐号欠费，将无法使用。
+
+3. **开始翻译:**
 
    <kbd>选择文本或者鼠标指向文本</kbd> > <kbd>单击鼠标右键</kbd> > <kbd>Translate</kbd>
 
    或者使用快捷键进行翻译，详见 **[Actions](#actions)**
 
-3. **切换翻译引擎:**
+4. **切换翻译引擎:**
 
-   点击状态栏的翻译引擎状态图标或者使用快捷键 <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>（Mac OS: <kbd>Control</kbd> + <kbd>Meta</kbd> + <kbd>Y</kbd>）可以快速切换翻译引擎，目前有谷歌翻译和有道翻译。
+   点击状态栏的翻译引擎状态图标或者使用快捷键 <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>（Mac OS: <kbd>Control</kbd> + <kbd>Meta</kbd> + <kbd>Y</kbd>）可以快速切换翻译引擎，目前有谷歌翻译、有道翻译和百度翻译。
+
+
+插件配置
+------
+
+![settings](./images/settings.png)
+
 
 Actions
 -------
@@ -115,39 +129,57 @@ FAQ
 ---
 1. **翻译内容出现乱码怎么办？**
 
-   答：出现乱码一般是因为字体中没有相应的字符的问题，可以到插件的设置页面修改字体以解决乱码问题（如下图所示）。
+   **答**：出现乱码一般是因为字体中没有相应的字符的问题，可以到插件的设置页面修改字体以解决乱码问题（如下图所示）。
    
    ![screenshots](./images/settings_font.png)
 
-2. **MacOS、Linux下无法保存应用密钥，出现校验签名失败?**
+2. **出现网络错误或者网络连接超时怎么办？**
 
-   答：可以尝试将密码保存方式改成`In KeePass`方式 (<kbd>Settings</kbd> > <kbd>Appearance & Behavior</kbd> > <kbd>System Settings</kbd> > <kbd>Passwords</kbd>)，原因与细节：
+   **答**：  
+   - 检查网络环境，确保网络畅通。
+   - 检查是否是因为使用了代理软件而导致插件无法访问翻译API。
+   - 检查IDE代理配置，查看是否是因为IDE代理配置导致的问题。
+   - 如果使用的是谷歌翻译，检查谷歌翻译配置，查看是否勾选了`使用translate.google.com`选项，translate.google.com在国内是需要VPN才能访问的。另外，TTS功能使用的也是谷歌翻译的API。
+
+3. **MacOS、Linux下无法保存应用密钥，出现校验签名失败?**
+
+   **答**：可以尝试将密码保存方式改成`In KeePass`方式 (<kbd>Settings</kbd> > <kbd>Appearance & Behavior</kbd> > <kbd>System Settings</kbd> > <kbd>Passwords</kbd>)，原因与细节：
    - MacOS，请另阅 [#81](https://github.com/YiiGuxing/TranslationPlugin/issues/81)
    - Linux，请另阅 [#115](https://github.com/YiiGuxing/TranslationPlugin/issues/115)
 
-3. **为什么2.0以前的版本快捷键在新版本都不能用了?**
+4. **为什么2.0以前的版本快捷键在新版本都不能用了?**
 
-   答：由于2.0以前的版本的快捷键大多与IDE默认的快捷键有冲突，抢占了IDE的默认快捷键。所以，从2.0版本以后，重新设置了插件的默认快捷键，而2.0以前的版本的快捷键已被废弃。
+   **答**：由于2.0以前的版本的快捷键大多与IDE默认的快捷键有冲突，抢占了IDE的默认快捷键。所以，从2.0版本以后，重新设置了插件的默认快捷键，而2.0以前的版本的快捷键已被废弃。
 
-4. **快捷键不能使用怎么办？**
+5. **快捷键不能使用怎么办？**
 
-   答：快捷键不能使用可能是因为被其他插件或者外部应用占用了，可以为相应的操作重新设置新的快捷键。
+   **答**：快捷键不能使用可能是因为被其他插件或者外部应用占用了，可以为相应的操作重新设置新的快捷键。
 
 更新日志
 --------
-## [v2.0.2](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.0.2) (2018-02-07)
+## [v2.3.2](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.3.2) (2019-02-20)
 
-- 多语言支持：添加英语语言
-- 添加状态栏图标显示配置
+- 添加自动播放TTS支持
 - BUG修复
 
 [完整的更新历史记录](./CHANGELOG.md)
 
 
-[build-img-dev]: https://travis-ci.org/YiiGuxing/TranslationPlugin.svg?branch=dev
-[build-img-master]: https://travis-ci.org/YiiGuxing/TranslationPlugin.svg?branch=master
-[release-img]: https://img.shields.io/github/release/YiiGuxing/TranslationPlugin.svg
+其他插件
+------
+
+- [FIGlet](https://github.com/YiiGuxing/intellij-figlet)
+- [Material Design Color Palette](https://github.com/YiiGuxing/material-design-color-palette)
+
+
+[build-img-dev]: https://img.shields.io/travis/YiiGuxing/TranslationPlugin/dev.svg?style=flat-square
+[build-img-master]: https://img.shields.io/travis/YiiGuxing/TranslationPlugin/master.svg?style=flat-square
+[license-img]: https://img.shields.io/github/license/YiiGuxing/TranslationPlugin.svg?style=flat-square
+[release-img]: https://img.shields.io/github/release/YiiGuxing/TranslationPlugin.svg?style=flat-square
+[plugin-img]: https://img.shields.io/badge/JetBrainsPlugin-8579-orange.svg?style=flat-square
+[downloads-img]: https://img.shields.io/jetbrains/plugin/d/8579.svg?style=flat-square
+[version-img]: https://img.shields.io/jetbrains/plugin/v/8579.svg?style=flat-square&colorB=0091ea
 [latest-release]: https://github.com/YiiGuxing/TranslationPlugin/releases/latest
-[plugin-img]: https://img.shields.io/badge/JetBrainsPlugin-8579-orange.svg
+[license]: https://github.com/YiiGuxing/TranslationPlugin/blob/master/LICENSE
 [travis-ci]: https://travis-ci.org/YiiGuxing/TranslationPlugin
 [plugin]: https://plugins.jetbrains.com/plugin/8579

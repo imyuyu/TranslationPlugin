@@ -1,5 +1,9 @@
-.idea/
+.idea/*
+!.idea/runConfigurations/
+!.idea/uiDesigner.xml
 .gradle/
 build/
+sandbox/
 out/
+.DS_Store
 *.iml

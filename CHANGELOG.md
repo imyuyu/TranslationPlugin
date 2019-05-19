@@ -1,5 +1,45 @@
 # Change Log
 
+## [v2.3.2](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.3.2) (2019-02-20)
+
+- 添加自动播放TTS支持
+- BUG修复
+
+## [v2.3.1](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.3.1) (2019-02-11)
+
+- 优化交互体验
+- 翻译替换：添加目标语言选择配置
+
+## [v2.3](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.3) (2019-01-26)
+
+- 翻译：添加目标语言选择配置
+- 翻译替换：添加分隔符配置
+- 翻译替换：扩大使用范围，任何文本输入框都可以使用了
+
+## [v2.2](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.2) (2018-11-03)
+
+- 翻译替换：支持多种语言
+- 有道翻译：显示词形
+
+## [v2.1.1](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.1.1) (2018-08-18)
+
+- 语言列表排序
+- 保留文本格式选项
+- BUG修复
+
+## [v2.1.0](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.1.0) (2018-07-30)
+
+- 实时翻译
+- 忽略内容配置
+- BUG修复
+
+## [v2.0.3](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.0.3) (2018-04-20)
+
+- 添加百度翻译
+- 翻译原文折叠
+- 优化交互体验
+- BUG修复
+
 ## [v2.0.2](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.0.2) (2018-02-07)
 
 - 多语言支持：添加英语语言

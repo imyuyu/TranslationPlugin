@@ -1,15 +1,11 @@
 package cn.yiiguxing.plugin.translate.tts
 
-import cn.yiiguxing.plugin.translate.DEFAULT_USER_AGENT
-import cn.yiiguxing.plugin.translate.GOOGLE_TTS
-import cn.yiiguxing.plugin.translate.GOOGLE_TTS_CN
+import cn.yiiguxing.plugin.translate.GOOGLE_TTS_FORMAT
 import cn.yiiguxing.plugin.translate.message
 import cn.yiiguxing.plugin.translate.trans.Lang
+import cn.yiiguxing.plugin.translate.trans.NetworkException
 import cn.yiiguxing.plugin.translate.trans.tk
 import cn.yiiguxing.plugin.translate.util.*
-import com.intellij.notification.NotificationDisplayType
-import com.intellij.notification.NotificationGroup
-import com.intellij.notification.NotificationType
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressIndicator
@@ -26,19 +22,18 @@ import javazoom.spi.mpeg.sampled.file.MpegAudioFileReader
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.io.SequenceInputStream
+import java.lang.StrictMath.round
 import javax.sound.sampled.*
 
 
 /**
- * NetworkTTSPlayer
- *
- * Created by Yii.Guxing on 2017-10-28 0028.
+ * Google TTS player.
  */
 class GoogleTTSPlayer(
-        project: Project?,
-        private val text: String,
-        private val lang: Lang,
-        private val completeListener: ((TTSPlayer) -> Unit)? = null
+    project: Project?,
+    private val text: String,
+    private val lang: Lang,
+    private val completeListener: ((TTSPlayer) -> Unit)? = null
 ) : TTSPlayer {
 
     private val playTask: PlayTask
@@ -57,23 +52,20 @@ class GoogleTTSPlayer(
     private var duration = 0
 
     private val playlist: List<String> by lazy {
-        val baseUrl = if (Settings.googleTranslateSettings.useTranslateGoogleCom) {
-            GOOGLE_TTS
-        } else {
-            GOOGLE_TTS_CN
-        }
+        val baseUrl = GOOGLE_TTS_FORMAT.format(googleHost)
         text.splitSentence(MAX_TEXT_LENGTH).let {
             it.mapIndexed { index, sentence ->
+                @Suppress("SpellCheckingInspection")
                 UrlBuilder(baseUrl)
-                        .addQueryParameter("client", "gtx")
-                        .addQueryParameter("ie", "UTF-8")
-                        .addQueryParameter("tl", lang.code)
-                        .addQueryParameter("total", it.size.toString())
-                        .addQueryParameter("idx", index.toString())
-                        .addQueryParameter("textlen", sentence.length.toString())
-                        .addQueryParameter("tk", sentence.tk())
-                        .addQueryParameter("q", sentence)
-                        .build()
+                    .addQueryParameter("client", "gtx")
+                    .addQueryParameter("ie", "UTF-8")
+                    .addQueryParameter("tl", lang.code)
+                    .addQueryParameter("total", it.size.toString())
+                    .addQueryParameter("idx", index.toString())
+                    .addQueryParameter("textlen", sentence.length.toString())
+                    .addQueryParameter("tk", sentence.tk())
+                    .addQueryParameter("q", sentence)
+                    .build()
             }
         }
     }
@@ -96,13 +88,25 @@ class GoogleTTSPlayer(
             if (error is HttpRequests.HttpStatusException && error.statusCode == 404) {
                 LOGGER.w("TTS Error: Unsupported language: ${lang.code}.")
 
-                @Suppress("InvalidBundleOrProperty")
-                NotificationGroup(NOTIFICATION_ID, NotificationDisplayType.TOOL_WINDOW, true)
-                        .createNotification("TTS", message("error.unsupportedLanguage", lang.langName),
-                                NotificationType.WARNING, null)
-                        .show(project)
+                Notifications.showWarningNotification(
+                    NOTIFICATION_ID,
+                    "TTS",
+                    message("error.unsupportedLanguage", lang.langName),
+                    project
+                )
             } else {
-                LOGGER.e("TTS Error", error)
+                val throwable = NetworkException.wrapIfIsNetworkException(error, googleHost)
+                if (throwable is NetworkException) {
+                    Notifications.showErrorNotification(
+                        project,
+                        NOTIFICATION_ID,
+                        "TTS",
+                        message("error.network"),
+                        throwable
+                    )
+                } else {
+                    LOGGER.e("TTS Error", error)
+                }
             }
         }
 
@@ -114,7 +118,7 @@ class GoogleTTSPlayer(
 
     override fun start() {
         checkThread()
-        if (started) throw IllegalStateException("Start with wrong state.")
+        check(!started) { "Start with wrong state." }
 
         started = true
         ProgressManager.getInstance().runProcessWithProgressAsynchronously(playTask, playController)
@@ -131,34 +135,37 @@ class GoogleTTSPlayer(
             text = "tts: downloading..."
         }
         playlist
-                .map { url ->
-                    indicator.checkCanceled()
-                    LOGGER.i("TTS>>> $url")
-                    HttpRequests.request(url)
-                            .userAgent(DEFAULT_USER_AGENT)
-                            .readBytes(indicator)
-                            .let {
-                                ByteArrayInputStream(it).apply { duration += getAudioDuration(it.size) }
-                            }
-                }
-                .enumeration()
-                .let {
-                    SequenceInputStream(it).use { sis ->
-                        indicator.checkCanceled()
-                        sis.asAudioInputStream().rawPlay(indicator)
+            .map { url ->
+                indicator.checkCanceled()
+                LOGGER.i("TTS>>> $url")
+                HttpRequests.request(url)
+                    .userAgent()
+                    .googleReferer()
+                    .readBytes(indicator)
+                    .let {
+                        ByteArrayInputStream(it).apply { duration += getAudioDuration(it.size) }
                     }
+            }
+            .enumeration()
+            .let {
+                SequenceInputStream(it).use { sis ->
+                    indicator.checkCanceled()
+                    sis.asAudioInputStream().rawPlay(indicator)
                 }
+            }
     }
 
     private fun AudioInputStream.rawPlay(indicator: ProgressIndicator) {
         val decodedFormat = format.let {
-            AudioFormat(AudioFormat.Encoding.PCM_SIGNED, it.sampleRate, 16, it.channels,
-                    it.channels * 2, it.sampleRate, false)
+            AudioFormat(
+                AudioFormat.Encoding.PCM_SIGNED, it.sampleRate, 16, it.channels,
+                it.channels * 2, it.sampleRate, false
+            )
         }
 
         MpegFormatConversionProvider()
-                .getAudioInputStream(decodedFormat, this)
-                .rawPlay(decodedFormat, indicator)
+            .getAudioInputStream(decodedFormat, this)
+            .rawPlay(decodedFormat, indicator)
     }
 
     private fun AudioInputStream.rawPlay(format: AudioFormat, indicator: ProgressIndicator) {
@@ -202,26 +209,28 @@ class GoogleTTSPlayer(
 
         private const val MAX_TEXT_LENGTH = 200
 
-        private const val NOTIFICATION_ID = "TTS Error"
+        private const val NOTIFICATION_ID = "TTS"
 
         val SUPPORTED_LANGUAGES: List<Lang> = listOf(
-                Lang.CHINESE, Lang.ENGLISH, Lang.CHINESE_TRADITIONAL, Lang.ALBANIAN, Lang.ARABIC, Lang.ESTONIAN,
-                Lang.ICELANDIC, Lang.POLISH, Lang.BOSNIAN, Lang.AFRIKAANS, Lang.DANISH, Lang.GERMAN, Lang.RUSSIAN,
-                Lang.FRENCH, Lang.FINNISH, Lang.KHMER, Lang.KOREAN, Lang.DUTCH, Lang.CATALAN, Lang.CZECH, Lang.CROATIAN,
-                Lang.LATIN, Lang.LATVIAN, Lang.ROMANIAN, Lang.MACEDONIAN, Lang.BENGALI, Lang.NEPALI, Lang.NORWEGIAN,
-                Lang.PORTUGUESE, Lang.JAPANESE, Lang.SWEDISH, Lang.SERBIAN, Lang.ESPERANTO, Lang.SLOVAK, Lang.SWAHILI,
-                Lang.TAMIL, Lang.THAI, Lang.TURKISH, Lang.WELSH, Lang.UKRAINIAN, Lang.SPANISH, Lang.GREEK,
-                Lang.HUNGARIAN, Lang.ARMENIAN, Lang.ITALIAN, Lang.HINDI, Lang.SUNDANESE, Lang.INDONESIAN,
-                Lang.JAVANESE, Lang.VIETNAMESE)
+            Lang.CHINESE, Lang.ENGLISH, Lang.CHINESE_TRADITIONAL, Lang.ALBANIAN, Lang.ARABIC, Lang.ESTONIAN,
+            Lang.ICELANDIC, Lang.POLISH, Lang.BOSNIAN, Lang.AFRIKAANS, Lang.DANISH, Lang.GERMAN, Lang.RUSSIAN,
+            Lang.FRENCH, Lang.FINNISH, Lang.KHMER, Lang.KOREAN, Lang.DUTCH, Lang.CATALAN, Lang.CZECH, Lang.CROATIAN,
+            Lang.LATIN, Lang.LATVIAN, Lang.ROMANIAN, Lang.MACEDONIAN, Lang.BENGALI, Lang.NEPALI, Lang.NORWEGIAN,
+            Lang.PORTUGUESE, Lang.JAPANESE, Lang.SWEDISH, Lang.SERBIAN, Lang.ESPERANTO, Lang.SLOVAK, Lang.SWAHILI,
+            Lang.TAMIL, Lang.THAI, Lang.TURKISH, Lang.WELSH, Lang.UKRAINIAN, Lang.SPANISH, Lang.GREEK,
+            Lang.HUNGARIAN, Lang.ARMENIAN, Lang.ITALIAN, Lang.HINDI, Lang.SUNDANESE, Lang.INDONESIAN,
+            Lang.JAVANESE, Lang.VIETNAMESE
+        )
 
         private fun checkThread() = checkDispatchThread(GoogleTTSPlayer::class.java)
 
         private fun InputStream.asAudioInputStream(): AudioInputStream =
-                MpegAudioFileReader().getAudioInputStream(this)
+            MpegAudioFileReader().getAudioInputStream(this)
 
         private fun InputStream.getAudioDuration(dataLength: Int): Int {
             return try {
-                Math.round(Bitstream(this).readFrame().total_ms(dataLength))
+                @Suppress("SpellCheckingInspection")
+                round(Bitstream(this).readFrame().total_ms(dataLength))
             } catch (e: Throwable) {
                 LOGGER.error(e)
                 0

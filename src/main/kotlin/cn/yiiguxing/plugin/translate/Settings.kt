@@ -1,5 +1,3 @@
-@file:Suppress("InvalidBundleOrProperty")
-
 package cn.yiiguxing.plugin.translate
 
 import cn.yiiguxing.plugin.translate.trans.BaiduTranslator
@@ -17,7 +15,6 @@ import com.intellij.util.messages.Topic
 import com.intellij.util.xmlb.XmlSerializerUtil
 import com.intellij.util.xmlb.annotations.Tag
 import com.intellij.util.xmlb.annotations.Transient
-import java.util.*
 import kotlin.properties.Delegates
 
 /**
@@ -40,10 +37,13 @@ class Settings : PersistentStateComponent<Settings> {
      * 谷歌翻译选项
      */
     var googleTranslateSettings: GoogleTranslateSettings = GoogleTranslateSettings()
+
     /**
      * 有道翻译选项
      */
+    @Suppress("SpellCheckingInspection")
     var youdaoTranslateSettings: YoudaoTranslateSettings = YoudaoTranslateSettings()
+
     /**
      * 百度翻译选项
      */
@@ -57,6 +57,7 @@ class Settings : PersistentStateComponent<Settings> {
             settingsChangePublisher.onOverrideFontChanged(this)
         }
     }
+
     /**
      * 主要字体
      */
@@ -65,10 +66,11 @@ class Settings : PersistentStateComponent<Settings> {
             settingsChangePublisher.onOverrideFontChanged(this)
         }
     }
+
     /**
      * 音标字体
      */
-    var phoneticFontFamily: String?  by Delegates.observable(null) { _, oldValue: String?, newValue: String? ->
+    var phoneticFontFamily: String? by Delegates.observable(null) { _, oldValue: String?, newValue: String? ->
         if (oldValue != newValue) {
             settingsChangePublisher.onOverrideFontChanged(this)
         }
@@ -111,6 +113,16 @@ class Settings : PersistentStateComponent<Settings> {
     var showWordForms: Boolean = true
 
     /**
+     * 启动时显示每日单词
+     */
+    var showWordsOnStartup: Boolean = false
+
+    /**
+     * 每日单词默认显示释义
+     */
+    var showExplanation: Boolean = false
+
+    /**
      * 翻译替换结果唯一时自动替换
      */
     var autoReplace: Boolean = false
@@ -121,18 +133,15 @@ class Settings : PersistentStateComponent<Settings> {
     var selectTargetLanguageBeforeReplacement: Boolean = false
 
     /**
-     * 状态栏图标
+     * 折叠原文
      */
     var foldOriginal: Boolean = false
 
     /**
-     * 是否关闭设置APP KEY通知
-     */
-    var isDisableAppKeyNotification = false
-    /**
      * 自动取词模式
      */
     var autoSelectionMode: SelectionMode = SelectionMode.INCLUSIVE
+
     /**
      * 目标语言选择
      */
@@ -161,7 +170,10 @@ class Settings : PersistentStateComponent<Settings> {
     }
 }
 
+@Suppress("SpellCheckingInspection")
 private const val YOUDAO_SERVICE_NAME = "YIIGUXING.TRANSLATION"
+
+@Suppress("SpellCheckingInspection")
 private const val YOUDAO_APP_KEY = "YOUDAO_APP_KEY"
 private const val BAIDU_SERVICE_NAME = "YIIGUXING.TRANSLATION.BAIDU"
 private const val BAIDU_APP_KEY = "BAIDU_APP_KEY"
@@ -172,25 +184,20 @@ private const val BAIDU_APP_KEY = "BAIDU_APP_KEY"
  * @property primaryLanguage 主要语言
  */
 @Tag("google-translate")
-data class GoogleTranslateSettings(
-    var primaryLanguage: Lang = Lang.default,
-    var useTranslateGoogleCom: Boolean = Locale.getDefault() != Locale.CHINA
-)
+data class GoogleTranslateSettings(var primaryLanguage: Lang = Lang.default, var useTranslateGoogleCom: Boolean = false)
 
 /**
  * @property primaryLanguage    主要语言
  * @property appId              应用ID
- * @property isAppKeyConfigured 应用密钥设置标志
  */
 @Tag("app-key")
 abstract class AppKeySettings(
     var primaryLanguage: Lang,
     var appId: String = "",
-    var isAppKeyConfigured: Boolean = false,
     securityName: String,
     securityKey: String
 ) {
-    private var _appKey: String?  by PasswordSafeDelegate(securityName, securityKey)
+    private var _appKey: String? by PasswordSafeDelegate(securityName, securityKey)
         @Transient get
         @Transient set
 
@@ -201,7 +208,6 @@ abstract class AppKeySettings(
     /** 设置应用密钥. */
     @Transient
     fun setAppKey(value: String?) {
-        isAppKeyConfigured = !value.isNullOrBlank()
         _appKey = if (value.isNullOrBlank()) null else value
     }
 }
@@ -209,6 +215,7 @@ abstract class AppKeySettings(
 /**
  * 有道翻译选项
  */
+@Suppress("SpellCheckingInspection")
 @Tag("youdao-translate")
 class YoudaoTranslateSettings : AppKeySettings(
     YoudaoTranslator.defaultLangForLocale,

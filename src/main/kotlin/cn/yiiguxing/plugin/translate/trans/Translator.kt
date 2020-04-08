@@ -5,8 +5,6 @@ import javax.swing.Icon
 
 /**
  * Translator
- *
- * Created by Yii.Guxing on 2017-10-29 0029.
  */
 interface Translator {
 
@@ -23,6 +21,8 @@ interface Translator {
     val supportedTargetLanguages: List<Lang>
 
     fun translate(text: String, srcLang: Lang, targetLang: Lang): Translation
+
+    fun translateDocumentation(documentation: String, srcLang: Lang, targetLang: Lang): BaseTranslation
 
     val defaultLangForLocale: Lang
         get() = when (Locale.getDefault().language) {

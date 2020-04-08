@@ -2,6 +2,8 @@ package cn.yiiguxing.plugin.translate.ui.settings
 
 import cn.yiiguxing.plugin.translate.*
 import cn.yiiguxing.plugin.translate.ui.CheckRegExpDialog
+import cn.yiiguxing.plugin.translate.ui.SupportDialog
+import cn.yiiguxing.plugin.translate.ui.UI
 import cn.yiiguxing.plugin.translate.ui.form.SettingsForm
 import cn.yiiguxing.plugin.translate.ui.selected
 import cn.yiiguxing.plugin.translate.util.SelectionMode
@@ -12,21 +14,17 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.*
 import com.intellij.util.ui.JBUI
+import icons.Icons
 import java.awt.Dimension
-import java.awt.Font
 import java.awt.event.ItemEvent
 import javax.swing.JComponent
 import javax.swing.JList
 import javax.swing.JPanel
 import javax.swing.text.AttributeSet
 import javax.swing.text.PlainDocument
-import javax.swing.text.SimpleAttributeSet
-import javax.swing.text.StyleConstants
 
 /**
  * SettingsPanel
- *
- * Created by Yii.Guxing on 2018/1/18
  */
 class SettingsPanel(settings: Settings, appStorage: AppStorage) : SettingsForm(settings, appStorage),
     ConfigurablePanel {
@@ -45,6 +43,7 @@ class SettingsPanel(settings: Settings, appStorage: AppStorage) : SettingsForm(s
         initSelectionModeComboBox()
         initTargetLangSelectionComboBox()
         initTTSSourceComboBox()
+        initSupport()
     }
 
     @Suppress("InvalidBundleOrProperty")
@@ -134,23 +133,29 @@ class SettingsPanel(settings: Settings, appStorage: AppStorage) : SettingsForm(s
         }
     }
 
+    private fun initSupport() {
+        supportLinkLabel.icon = Icons.Support
+        supportLinkLabel.setListener({ _, _ -> SupportDialog.show() }, null)
+    }
+
     private fun setListeners() {
         fontCheckBox.addItemListener {
             val selected = fontCheckBox.isSelected
             primaryFontComboBox.isEnabled = selected
             phoneticFontComboBox.isEnabled = selected
-            fontPreview.isEnabled = selected
+            primaryFontPreview.isEnabled = selected
             primaryFontLabel.isEnabled = selected
             phoneticFontLabel.isEnabled = selected
+            phoneticFontPreview.isEnabled = selected
         }
         primaryFontComboBox.addItemListener {
             if (it.stateChange == ItemEvent.SELECTED) {
-                previewPrimaryFont(primaryFontComboBox.fontName)
+                primaryFontPreview.previewFont(primaryFontComboBox.fontName)
             }
         }
         phoneticFontComboBox.addItemListener {
             if (it.stateChange == ItemEvent.SELECTED) {
-                previewPhoneticFont(phoneticFontComboBox.fontName)
+                phoneticFontPreview.previewFont(phoneticFontComboBox.fontName)
             }
         }
         clearHistoriesButton.addActionListener {
@@ -191,26 +196,8 @@ class SettingsPanel(settings: Settings, appStorage: AppStorage) : SettingsForm(s
         })
     }
 
-    private fun previewPrimaryFont(primary: String?) {
-        if (primary.isNullOrBlank()) {
-            fontPreview.font = JBUI.Fonts.label(14f)
-        } else {
-            fontPreview.font = JBUI.Fonts.create(primary, 14)
-        }
-    }
-
-    private fun previewPhoneticFont(primary: String?) {
-        val document = fontPreview.styledDocument
-
-        val font: Font = if (primary.isNullOrBlank()) {
-            JBUI.Fonts.label(14f)
-        } else {
-            JBUI.Fonts.create(primary, 14)
-        }
-
-        val attributeSet = SimpleAttributeSet()
-        StyleConstants.setFontFamily(attributeSet, font.family)
-        document.setCharacterAttributes(4, 41, attributeSet, true)
+    private fun JComponent.previewFont(primary: String?) {
+        font = if (primary.isNullOrBlank()) UI.defaultFont else JBUI.Fonts.create(primary, 14)
     }
 
     private fun getMaxHistorySize(): Int {
@@ -242,6 +229,8 @@ class SettingsPanel(settings: Settings, appStorage: AppStorage) : SettingsForm(s
                     || settings.showWordForms != showWordFormsCheckBox.isSelected
                     || settings.autoReplace != autoReplaceCheckBox.isSelected
                     || settings.selectTargetLanguageBeforeReplacement != selectTargetLanguageCheckBox.isSelected
+                    || settings.showWordsOnStartup != showWordsOnStartupCheckBox.isSelected
+                    || settings.showExplanation != showExplanationCheckBox.isSelected
         }
 
 
@@ -274,6 +263,8 @@ class SettingsPanel(settings: Settings, appStorage: AppStorage) : SettingsForm(s
             showWordForms = showWordFormsCheckBox.isSelected
             autoReplace = autoReplaceCheckBox.isSelected
             selectTargetLanguageBeforeReplacement = selectTargetLanguageCheckBox.isSelected
+            showWordsOnStartup = showWordsOnStartupCheckBox.isSelected
+            showExplanation = showExplanationCheckBox.isSelected
 
             if (validRegExp) {
                 ignoreRegExp = this@SettingsPanel.ignoreRegExp.text
@@ -296,12 +287,14 @@ class SettingsPanel(settings: Settings, appStorage: AppStorage) : SettingsForm(s
         showWordFormsCheckBox.isSelected = settings.showWordForms
         autoReplaceCheckBox.isSelected = settings.autoReplace
         selectTargetLanguageCheckBox.isSelected = settings.selectTargetLanguageBeforeReplacement
+        showWordsOnStartupCheckBox.isSelected = settings.showWordsOnStartup
+        showExplanationCheckBox.isSelected = settings.showExplanation
         primaryFontComboBox.fontName = settings.primaryFontFamily
         phoneticFontComboBox.fontName = settings.phoneticFontFamily
-        previewPrimaryFont(settings.primaryFontFamily)
-        previewPhoneticFont(settings.phoneticFontFamily)
+        primaryFontPreview.previewFont(settings.primaryFontFamily)
+        phoneticFontPreview.previewFont(settings.phoneticFontFamily)
 
-        maxHistoriesSizeComboBox.editor.item = Integer.toString(appStorage.maxHistorySize)
+        maxHistoriesSizeComboBox.editor.item = appStorage.maxHistorySize.toString()
         selectionModeComboBox.selected = settings.autoSelectionMode
         targetLangSelectionComboBox.selected = settings.targetLanguageSelection
         ttsSourceComboBox.selected = settings.ttsSource

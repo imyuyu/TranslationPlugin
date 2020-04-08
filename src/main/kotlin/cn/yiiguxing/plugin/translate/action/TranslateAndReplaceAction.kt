@@ -82,8 +82,9 @@ class TranslateAndReplaceAction : AutoSelectAction(true, NON_WHITESPACE_CONDITIO
         editor.document.getText(selectionRange)
             .takeIf { it.isNotBlank() && it.any(JAVA_IDENTIFIER_PART_CONDITION) }
             ?.let { text ->
+                val processedText = text.processBeforeTranslate() ?: text
                 fun translate(targetLang: Lang, reTranslate: Boolean = false) {
-                    TranslateService.translate(text, Lang.AUTO, targetLang, object : TranslateListener {
+                    TranslateService.translate(processedText, Lang.AUTO, targetLang, object : TranslateListener {
                         override fun onSuccess(translation: Translation) {
                             val primaryLanguage = TranslateService.translator.primaryLanguage
                             if (reTranslate && translation.srcLang == Lang.ENGLISH
@@ -94,11 +95,8 @@ class TranslateAndReplaceAction : AutoSelectAction(true, NON_WHITESPACE_CONDITIO
                             } else {
                                 val items = translation
                                     .run {
-                                        dictionaries
-                                            .map { it.terms }
-                                            .flatten()
-                                            .toMutableSet()
-                                            .apply { trans?.let { add(it) } }
+                                        (dictDocument?.translations?.toMutableSet() ?: mutableSetOf())
+                                            .apply { this@run.translation?.let { add(it) } }
                                     }
                                     .asSequence()
                                     .filter { it.isNotEmpty() }
@@ -140,9 +138,11 @@ class TranslateAndReplaceAction : AutoSelectAction(true, NON_WHITESPACE_CONDITIO
                 if (Settings.selectTargetLanguageBeforeReplacement) {
                     editor.showTargetLanguagesPopup { translate(it) }
                 } else {
-                    val targetLang = Lang.AUTO
-                        .takeIf { TranslateService.translator.supportedTargetLanguages.contains(it) }
-                        ?: Lang.ENGLISH
+                    val targetLang = if (TranslateService.translator.supportedTargetLanguages.contains(Lang.AUTO)) {
+                        Lang.AUTO
+                    } else {
+                        Lang.ENGLISH
+                    }
                     translate(targetLang, true)
                 }
             }
@@ -154,6 +154,7 @@ class TranslateAndReplaceAction : AutoSelectAction(true, NON_WHITESPACE_CONDITIO
 
         /** 谷歌翻译的空格符：`0xA0` */
         const val GT_WHITESPACE_CHARACTER = ' ' // 0xA0
+
         /** 空格符：`0x20` */
         const val WHITESPACE_CHARACTER = ' ' // 0x20
 
@@ -170,9 +171,10 @@ class TranslateAndReplaceAction : AutoSelectAction(true, NON_WHITESPACE_CONDITIO
         fun Editor.showTargetLanguagesPopup(onChosen: (Lang) -> Unit) {
             val appStorage = AppStorage
             val languages = TranslateService.translator.supportedTargetLanguages.sortedByDescending {
-                if (this == Lang.AUTO) Int.MAX_VALUE else appStorage.getLanguageScore(it)
+                if (it == Lang.AUTO) Int.MAX_VALUE else appStorage.getLanguageScore(it)
             }
             val index = languages.indexOf(appStorage.lastReplacementTargetLanguage)
+
             @Suppress("InvalidBundleOrProperty")
             val step = object : SpeedSearchListPopupStep<Lang>(languages, title = message("title.targetLanguage")) {
                 override fun getTextFor(value: Lang): String = value.langName
@@ -192,9 +194,10 @@ class TranslateAndReplaceAction : AutoSelectAction(true, NON_WHITESPACE_CONDITIO
 
 
         fun Editor.canShowPopup(selectionRange: TextRange, targetText: String): Boolean {
-            return !isDisposed
-                    && targetText == document.getText(selectionRange)
-                    && selectionRange.containsOffset(caretModel.offset)
+            return !isDisposed &&
+                    selectionRange.endOffset <= document.textLength &&
+                    targetText == document.getText(selectionRange) &&
+                    selectionRange.containsOffset(caretModel.offset)
         }
 
         fun Editor.tryReplace(selectionRange: TextRange, elementsToReplace: List<String>): Boolean {

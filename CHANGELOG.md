@@ -1,5 +1,111 @@
 # Change Log
 
+## [v2.8.1](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.8.1) (2020-04-07)
+
+- 修复了一些Bug
+
+## [v2.8.0](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.8.0) (2020-03-23)
+
+- 谷歌翻译新增拼写检查功能
+- 翻译与替换功能支持自动单词拆分
+- 单词本自动聚焦新增的单词
+
+## [v2.7.3](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.7.3) (2020-02-22)
+
+- 修复了一些Bug
+
+## [v2.7.2](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.7.2) (2020-01-21)
+
+- 修复了Dart语言中无法对类的第一个成员的文档注释进行文档翻译的问题
+
+## [v2.7.1](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.7.1) (2020-01-13)
+
+- 优化了单行文档注释的交互体验
+- 修复了Go语言在一些情况下无法进行文档翻译的问题
+
+## [v2.7.0](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.7.0) (2020-01-08)
+
+- 新增对Go, Dart, Python, C, C++, Objective-C/C++语言的文档注释翻译支持
+- 支持列选择模式的翻译
+
+## [v2.6.2](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.6.2) (2019-12-16)
+
+- 修复了导致插件无法被初始化的致命错误
+
+## [v2.6.1](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.6.1) (2019-12-10)
+
+- 修复了文档注释翻译窗口大小异常的问题
+
+## [v2.6.0](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.6.0) (2019-12-05)
+
+- 新增了文档注释翻译功能
+- 更新了有道翻译支持语言列表，支持超过100种语言
+- 优化了字体预览
+- 修复了使用百度翻译引擎翻译带有换行内容时显示翻译内容不全的问题
+
+## [v2.5.1](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.5.1) (2019-11-01)
+
+- 修复了导致在Android Studio上崩溃的一个致命错误
+- 修复了忽略内容在一些特定的情况下会失效的问题
+- 修复了重复显示每日单词对话框会导致界面异常的问题
+- 一些功能增强与优化
+
+## [v2.5.0](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.5.0) (2019-10-20)
+
+- 全新的有道词典视图
+- 新增单词本单词标签功能，为单词本中的单词分组和归类
+- 新增单词本导入导出功能
+- UI主题适配
+- 升级了有道翻译API
+- 其他一些优化
+
+## [v2.4.2](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.4.2) (2019-09-29)
+
+- 修复了在Android Studio上切换翻译引擎时崩溃的问题
+- 修复了在Android Studio中点击通知上的Action时崩溃的问题
+- 界面上的一个小优化
+
+## [v2.4.1](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.4.1) (2019-09-22)
+
+- 修复了导致在2019.2.3版本上崩溃的一个致命错误
+- 修复了导致在2019.3版本上崩溃的一个致命错误
+- 修复了其他的一些BUG
+
+## [v2.4.0](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.4.0) (2019-09-16)
+
+- 添加版本发行说明
+- 新增单词本功能
+- 优化了一些图标
+- 修复了一些BUG
+
+## [v2.3.8](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.3.8) (2019-07-30)
+
+- 修复翻译长文本时显示不全的问题
+
+## [v2.3.7](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.3.7) (2019-07-22)
+
+- 优化交互检验
+- 修复对话框上不能使用翻译替换的问题
+
+## [v2.3.6](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.3.6) (2019-07-15)
+
+- 修复Google翻译Forbidden的问题
+- BUG修复
+
+## [v2.3.5](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.3.5) (2019-07-15)
+
+- 修复Google翻译Forbidden的问题
+
+## [v2.3.4](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.3.4) (2019-07-12)
+
+- BUG修复
+
+## [v2.3.3](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.3.3) (2019-07-10)
+
+- 优化交互体验
+- 翻译窗口可调整尺寸
+- BUG修复
+
 ## [v2.3.2](https://github.com/YiiGuxing/TranslationPlugin/tree/v2.3.2) (2019-02-20)
 
 - 添加自动播放TTS支持

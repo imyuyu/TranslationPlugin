@@ -3,7 +3,9 @@ package cn.yiiguxing.plugin.translate.trans
 import cn.yiiguxing.plugin.translate.Settings
 import cn.yiiguxing.plugin.translate.SettingsChangeListener
 import cn.yiiguxing.plugin.translate.util.*
-import com.intellij.openapi.application.ApplicationManager
+import cn.yiiguxing.plugin.translate.wordbook.WordBookItem
+import cn.yiiguxing.plugin.translate.wordbook.WordBookListener
+import cn.yiiguxing.plugin.translate.wordbook.WordBookService
 import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.components.ServiceManager
 import com.intellij.openapi.diagnostic.Logger
@@ -12,19 +14,24 @@ import com.intellij.util.messages.MessageBusConnection
 
 /**
  * TranslateService
- *
- * Created by Yii.Guxing on 2017/10/30
  */
 class TranslateService private constructor() {
 
     @Volatile
     var translator: Translator = DEFAULT_TRANSLATOR
         private set
+
     private val cache = LruCache<CacheKey, Translation>(500)
 
-    private var messageBus: MessageBusConnection? = null
-
     private val listeners = mutableMapOf<ListenerKey, MutableSet<TranslateListener>>()
+
+    init {
+        setTranslator(Settings.instance.translator)
+        Application.messageBus
+            .connect()
+            .subscribeSettingsTopic()
+            .subscribeWordBookTopic()
+    }
 
     fun setTranslator(translatorId: String) {
         checkThread()
@@ -67,6 +74,10 @@ class TranslateService private constructor() {
             try {
                 with(translator) {
                     translate(text, srcLang, targetLang).let { translation ->
+                        translation.favoriteId = WordBookService.instance
+                            .takeIf { it.canAddToWordbook(text) }
+                            // 这里的`sourceLanguage`参数不能直接使用`srcLang`，因为`srcLang`的值可能为`Lang.AUTO`
+                            ?.getWordId(text, translation.srcLang, translation.targetLang)
                         translation.cache(text, srcLang, targetLang, id)
                         invokeLater(ModalityState.any()) {
                             listeners.run(key) { onSuccess(translation) }
@@ -83,7 +94,9 @@ class TranslateService private constructor() {
     }
 
     private inline fun MutableMap<ListenerKey, MutableSet<TranslateListener>>.run(
-            key: ListenerKey, action: TranslateListener.() -> Unit) {
+        key: ListenerKey,
+        action: TranslateListener.() -> Unit
+    ) {
         remove(key)?.forEach { it.action() }
     }
 
@@ -101,30 +114,48 @@ class TranslateService private constructor() {
         }
     }
 
-    fun install() {
+    private fun notifyFavoriteAdded(item: WordBookItem) {
         checkThread()
-        if (messageBus != null) {
-            return
-        }
-
-        setTranslator(Settings.instance.translator)
-        messageBus = ApplicationManager
-                .getApplication()
-                .messageBus
-                .connect()
-                .apply {
-                    subscribe(SettingsChangeListener.TOPIC, object : SettingsChangeListener {
-                        override fun onTranslatorChanged(settings: Settings, translatorId: String) {
-                            setTranslator(translatorId)
-                        }
-                    })
+        synchronized(cache) {
+            for ((_, translation) in cache.snapshot) {
+                if (translation.favoriteId == null &&
+                    translation.srcLang == item.sourceLanguage &&
+                    translation.targetLang == item.targetLanguage &&
+                    translation.original.equals(item.word, true)
+                ) {
+                    translation.favoriteId = item.id
                 }
+            }
+        }
     }
 
-    fun uninstall() {
+    private fun notifyFavoriteRemoved(favoriteId: Long) {
         checkThread()
-        messageBus?.disconnect()
-        messageBus = null
+        synchronized(cache) {
+            for ((_, translation) in cache.snapshot) {
+                if (translation.favoriteId == favoriteId) {
+                    translation.favoriteId = null
+                }
+            }
+        }
+    }
+
+    private fun MessageBusConnection.subscribeSettingsTopic() = apply {
+        subscribe(SettingsChangeListener.TOPIC, object : SettingsChangeListener {
+            override fun onTranslatorChanged(settings: Settings, translatorId: String) {
+                setTranslator(translatorId)
+            }
+        })
+    }
+
+    private fun MessageBusConnection.subscribeWordBookTopic() = apply {
+        subscribe(WordBookListener.TOPIC, object : WordBookListener {
+            override fun onWordAdded(service: WordBookService, wordBookItem: WordBookItem) {
+                notifyFavoriteAdded(wordBookItem)
+            }
+
+            override fun onWordRemoved(service: WordBookService, id: Long) = notifyFavoriteRemoved(id)
+        })
     }
 
     private data class ListenerKey(val text: String, val srcLang: Lang, val targetLang: Lang)

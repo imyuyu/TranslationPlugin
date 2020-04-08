@@ -1,12 +1,15 @@
 /*
  * 计算谷歌翻译的tk值.
- * 
- * Created by Yii.Guxing on 2017/10/27
  */
 package cn.yiiguxing.plugin.translate.trans
 
-import java.lang.Math.abs
+import cn.yiiguxing.plugin.translate.message
+import cn.yiiguxing.plugin.translate.util.*
+import com.intellij.openapi.diagnostic.Logger
+import com.intellij.util.io.HttpRequests
+import java.lang.StrictMath.abs
 import java.util.*
+import java.util.regex.Pattern
 
 private fun `fun`(a: Long, b: String): Long {
     var g = a
@@ -25,32 +28,82 @@ private fun `fun`(a: Long, b: String): Long {
  */
 object TKK {
     private const val MIM = 60 * 60 * 1000
+    private const val ELEMENT_URL_FORMAT = "https://%s/translate_a/element.js"
+    private const val NOTIFICATION_DISPLAY_ID = "TKK Update Failed"
+
+    private val logger: Logger = Logger.getInstance(GoogleTranslator::class.java)
 
     private val generator = Random()
 
-    var values = update()
-        private set
+    private val tkkPattern = Pattern.compile("tkk='(\\d+).(-?\\d+)'")
 
+    private var innerValue: Pair<Long, Long> = 0L to 0L
+
+    private var needUpdate: Boolean = true
+
+    val value get() = update()
+
+    @Synchronized
     fun update(): Pair<Long, Long> {
-        val a = abs(generator.nextInt().toLong())
-        val b = generator.nextInt().toLong()
-        val c = System.currentTimeMillis() / MIM
+        val now = System.currentTimeMillis() / MIM
+        val (curVal) = innerValue
+        if (!needUpdate && now == curVal) {
+            return innerValue
+        }
 
-        values = c to (a + b)
-        return values
+        val newTKK = updateFromGoogle()
+        needUpdate = newTKK == null
+        innerValue = newTKK ?: now to (abs(generator.nextInt().toLong()) + generator.nextInt().toLong())
+        return innerValue
     }
 
-    @Suppress("unused")
-    fun updateFromGoogle(): Pair<Long, Long> =
-            // TODO get from https://translate.google.cn/translate_a/element.js
-            // TODO 懒得写了。。。
-            update()
+    private fun updateFromGoogle(): Pair<Long, Long>? {
+        val updateUrl = ELEMENT_URL_FORMAT.format(googleHost)
+
+        return try {
+            val elementJS = HttpRequests.request(updateUrl)
+                .userAgent()
+                .googleReferer()
+                .readString(null)
+            val matcher = tkkPattern.matcher(elementJS)
+            if (matcher.find()) {
+                val value1 = matcher.group(1).toLong()
+                val value2 = matcher.group(2).toLong()
+
+                logger.i("TKK Updated: $value1.$value2")
+
+                value1 to value2
+            } else {
+                logger.w("TKK update failed: TKK not found.")
+                Notifications.showWarningNotification(
+                    NOTIFICATION_DISPLAY_ID,
+                    "TKK",
+                    "TKK update failed: TKK not found."
+                )
+
+                null
+            }
+        } catch (e: Throwable) {
+            val error = NetworkException.wrapIfIsNetworkException(e, googleHost)
+
+            logger.w("TKK update failed", error)
+            Notifications.showErrorNotification(
+                null,
+                NOTIFICATION_DISPLAY_ID,
+                "TKK",
+                message("notification.ttk.update.failed"),
+                error
+            )
+
+            null
+        }
+    }
 }
 
 /**
  * 计算tk值.
  */
-fun String.tk(tkk: Pair<Long, Long> = TKK.values): String {
+fun String.tk(tkk: Pair<Long, Long> = TKK.value): String {
     val a = mutableListOf<Long>()
     var b = 0
     while (b < length) {
@@ -76,8 +129,7 @@ fun String.tk(tkk: Pair<Long, Long> = TKK.values): String {
         b++
     }
 
-    val d = tkk.first
-    val e = tkk.second
+    val (d, e) = tkk
     var f = d
     for (h in a) {
         f += h

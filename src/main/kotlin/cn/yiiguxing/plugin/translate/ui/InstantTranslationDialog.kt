@@ -1,16 +1,13 @@
 package cn.yiiguxing.plugin.translate.ui
 
 import cn.yiiguxing.plugin.translate.*
+import cn.yiiguxing.plugin.translate.trans.BaiduTranslator
 import cn.yiiguxing.plugin.translate.trans.Lang
 import cn.yiiguxing.plugin.translate.trans.LanguagePair
 import cn.yiiguxing.plugin.translate.trans.Translation
 import cn.yiiguxing.plugin.translate.ui.form.InstantTranslationDialogForm
-import cn.yiiguxing.plugin.translate.ui.icon.Icons
-import cn.yiiguxing.plugin.translate.util.AppStorage
-import cn.yiiguxing.plugin.translate.util.Notifications
-import cn.yiiguxing.plugin.translate.util.TextToSpeech
+import cn.yiiguxing.plugin.translate.util.*
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
@@ -19,16 +16,16 @@ import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.JBColor
 import com.intellij.ui.SideBorder
 import com.intellij.util.Alarm
+import icons.Icons
 import java.awt.datatransfer.StringSelection
 import java.awt.event.ItemEvent
 import java.awt.event.ItemListener
 import javax.swing.border.LineBorder
 import javax.swing.event.DocumentEvent
+import kotlin.text.isNullOrBlank
 
 /**
  * InstantTranslationDialog
- *
- * Created by Yii.Guxing on 2018/06/18
  */
 class InstantTranslationDialog(private val project: Project?) :
     InstantTranslationDialogForm(project),
@@ -57,15 +54,14 @@ class InstantTranslationDialog(private val project: Project?) :
         initComponents()
         peer.setContentPane(createCenterPanel())
 
-        ApplicationManager
-            .getApplication()
-            .messageBus
+        Application.messageBus
             .connect(this)
             .subscribe(SettingsChangeListener.TOPIC, this)
     }
 
     private fun initComponents() {
         initBorders()
+        initBackground()
         initLangComboBoxes()
         initTextAreas()
         initToolBar()
@@ -76,16 +72,23 @@ class InstantTranslationDialog(private val project: Project?) :
     private fun initBorders() {
         inputScrollPane.border = null
         translationScrollPane.border = null
-        inputContentPanel.border = BORDER
-        translationContentPanel.border = BORDER
-        inputToolBar.apply {
-            border = TOOLBAR_BORDER
-            background = TOOLBAR_BACKGROUND
-        }
-        translationToolBar.apply {
-            border = TOOLBAR_BORDER
-            background = TOOLBAR_BACKGROUND
-        }
+
+        val borderColor = UI.getBordersColor(BORDER_COLOR)
+        val border = LineBorder(borderColor)
+        val borderTop = SideBorder(borderColor, SideBorder.TOP)
+
+        inputContentPanel.border = border
+        translationContentPanel.border = border
+        inputToolBar.border = borderTop
+        translationToolBar.border = borderTop
+    }
+
+    private fun initBackground() {
+        val background = UI.getColor("ToolWindow.Header.background", TOOLBAR_BACKGROUND)
+            ?.alphaBlend(inputTextArea.background, 0.6f)
+
+        inputToolBar.background = background
+        translationToolBar.background = background
     }
 
     private fun initLangComboBoxes() {
@@ -130,7 +133,7 @@ class InstantTranslationDialog(private val project: Project?) :
         translationTTSButton.isEnabled = false
 
         inputTTSButton.dataSource { lastTranslation?.run { original to srcLang } }
-        translationTTSButton.dataSource { lastTranslation?.run { trans?.let { it to targetLang } } }
+        translationTTSButton.dataSource { lastTranslation?.run { translation?.let { it to targetLang } } }
 
         clearButton.apply {
             isEnabled = false
@@ -168,7 +171,7 @@ class InstantTranslationDialog(private val project: Project?) :
                     targetLangComboBox.selected = srcLang.takeIf { target.contains(it) } ?: presenter.primaryLanguage
                 }
 
-                lastTranslation?.trans?.let { inputTextArea.text = it }
+                lastTranslation?.translation?.let { inputTextArea.text = it }
             }
         }
     }
@@ -178,7 +181,7 @@ class InstantTranslationDialog(private val project: Project?) :
         addActionListener { onTranslate() }
     }
 
-    private fun requestTranslate(delay: Int = 300) {
+    private fun requestTranslate(delay: Int = if (presenter.translatorId == BaiduTranslator.id) 1000 else 500) {
         alarm.apply {
             cancelAllRequests()
             addRequest(translateAction, delay)
@@ -205,7 +208,7 @@ class InstantTranslationDialog(private val project: Project?) :
         swapButton.isEnabled = false
         inputTTSButton.isEnabled = false
         translationTTSButton.isEnabled = false
-        translationTextArea.text = "${lastTranslation?.trans ?: ""}..."
+        translationTextArea.text = "${lastTranslation?.translation ?: ""}..."
     }
 
     override fun showTranslation(request: Presenter.Request, translation: Translation, fromCache: Boolean) {
@@ -218,7 +221,7 @@ class InstantTranslationDialog(private val project: Project?) :
         swapButton.isEnabled = true
         inputTTSButton.isEnabled = TextToSpeech.isSupportLanguage(translation.srcLang)
         translationTTSButton.isEnabled = TextToSpeech.isSupportLanguage(translation.targetLang)
-        translationTextArea.text = translation.trans
+        translationTextArea.text = translation.translation
     }
 
     override fun showError(request: Presenter.Request, errorMessage: String, throwable: Throwable) {
@@ -279,8 +282,7 @@ class InstantTranslationDialog(private val project: Project?) :
 
     companion object {
         private const val NOTIFICATION_DISPLAY_ID = "Instant Translate Error"
-        private val BORDER = LineBorder(JBColor(0x808080, 0x303030))
-        private val TOOLBAR_BORDER = SideBorder(JBColor(0x9F9F9F, 0x3C3C3C), SideBorder.TOP)
+        private val BORDER_COLOR = JBColor(0x808080, 0x303030)
         private val TOOLBAR_BACKGROUND = JBColor(0xEEF1F3, 0x4E5556)
     }
 }

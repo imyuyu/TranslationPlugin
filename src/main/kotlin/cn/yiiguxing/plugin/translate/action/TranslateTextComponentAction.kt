@@ -2,6 +2,7 @@ package cn.yiiguxing.plugin.translate.action
 
 import cn.yiiguxing.plugin.translate.message
 import cn.yiiguxing.plugin.translate.util.*
+import com.intellij.codeInsight.hint.HintManagerImpl
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.editor.Caret
 import com.intellij.openapi.editor.Editor
@@ -10,10 +11,8 @@ import com.intellij.openapi.editor.actions.TextComponentEditorAction
 
 /**
  * 文本组件（如文本框、提示气泡、输入框……）翻译
- *
- * Created by Yii.Guxing on 2017/9/11
  */
-class TranslateTextComponentAction : TextComponentEditorAction(Handler()) {
+class TranslateTextComponentAction : TextComponentEditorAction(Handler()), HintManagerImpl.ActionToIgnore {
 
     init {
         isEnabledInModalContext = true
@@ -38,14 +37,14 @@ class TranslateTextComponentAction : TextComponentEditorAction(Handler()) {
         }
 
         public override fun isEnabledForCaret(editor: Editor, caret: Caret, dataContext: DataContext?) =
-                when {
-                    editor.selectionModel.hasSelection() -> !editor.selectionModel.selectedText.isNullOrBlank()
-                    !editor.isViewer -> {
-                        val textRange = editor.getSelectionFromCurrentCaret(settings.autoSelectionMode)
-                        textRange?.let { editor.document.getText(it).isNotBlank() } ?: false
-                    }
-                    else -> false
+            when {
+                editor.selectionModel.hasSelection() -> !editor.selectionModel.selectedText.isNullOrBlank()
+                !editor.isViewer -> {
+                    val textRange = editor.getSelectionFromCurrentCaret(settings.autoSelectionMode)
+                    textRange?.let { editor.document.getText(it).isNotBlank() } ?: false
                 }
+                else -> false
+            }
     }
 
 }
